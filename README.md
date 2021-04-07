@@ -9,6 +9,10 @@ Here is an example. The result is the same as `seq 1000000`.
 seq 1000000 | hb | hb -d
 ```
 
+## Install
+
+Download from <https://github.com/nwtgck/hb/releases>
+
 ## Spec
 
 Input data chunk is encoded as two types, DATA and HEARTBEAT. The format is as follows.
