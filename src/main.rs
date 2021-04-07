@@ -99,12 +99,12 @@ fn main() {
         decode(&mut io::stdin(), &mut io::stdout()).unwrap();
     } else {
         std::thread::spawn(move || loop {
+            std::thread::sleep(Duration::from_secs(interval_seconds));
             // Send heartbeat
             (&mut io::stdout())
                 .lock()
                 .write(&[HEARTBEAT_FLAG, rand::random::<u8>()])
                 .unwrap();
-            std::thread::sleep(Duration::from_secs(interval_seconds));
         });
         encode(&mut io::stdin()).unwrap();
     }
