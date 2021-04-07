@@ -28,6 +28,7 @@ where
             stdout_lock.write_all(&[DATA_FLAG])?;
             stdout_lock.write_all(&(len as u32).to_be_bytes())?;
             stdout_lock.write_all(&buf[..len])?;
+            stdout_lock.flush()?;
         }
     }
 }
@@ -70,6 +71,7 @@ where
         }
         rest -= read_len;
         writer.write_all(&buf[..read_len])?;
+        writer.flush()?;
     }
 }
 
@@ -101,10 +103,12 @@ fn main() {
         std::thread::spawn(move || loop {
             std::thread::sleep(Duration::from_secs(interval_seconds));
             // Send heartbeat
-            (&mut io::stdout())
-                .lock()
+            let stdout = &mut io::stdout();
+            let mut stdout_lock = stdout.lock();
+            stdout_lock
                 .write(&[HEARTBEAT_FLAG, rand::random::<u8>()])
                 .unwrap();
+            stdout_lock.flush().unwrap();
         });
         encode(&mut io::stdin()).unwrap();
     }
