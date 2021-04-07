@@ -78,25 +78,33 @@ where
 #[structopt(name = "hb")]
 #[structopt(rename_all = "kebab-case")]
 struct Opt {
-    #[structopt(short = "d")]
+    #[structopt(short = "d", long = "decode")]
     /// Decode
-    decode: bool,
+    decodes: bool,
+    // Same short flag name as watch command
+    #[structopt(short = "n", long = "interval", name = "seconds", default_value = "30")]
+    /// Seconds to send a heartbeat
+    interval_seconds: u64,
 }
 
 fn main() {
     // Parse options
     let opt = Opt::from_args();
-    if opt.decode {
+    let Opt {
+        decodes,
+        interval_seconds,
+        ..
+    } = opt;
+    if decodes {
         decode(&mut io::stdin(), &mut io::stdout()).unwrap();
     } else {
-        std::thread::spawn(|| loop {
+        std::thread::spawn(move || loop {
             // Send heartbeat
             (&mut io::stdout())
                 .lock()
                 .write(&[HEARTBEAT_FLAG, rand::random::<u8>()])
                 .unwrap();
-            // TODO: hard code
-            std::thread::sleep(Duration::from_secs(1));
+            std::thread::sleep(Duration::from_secs(interval_seconds));
         });
         encode(&mut io::stdin()).unwrap();
     }
