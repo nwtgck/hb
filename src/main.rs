@@ -1,4 +1,6 @@
 use std::io;
+use std::io::Write;
+use std::time::Duration;
 use structopt::StructOpt;
 
 // Same value as used in std::io::copy()
@@ -7,11 +9,12 @@ pub const DEFAULT_BUF_SIZE: usize = 8 * 1024;
 const DATA_FLAG: u8 = 0;
 const HEARTBEAT_FLAG: u8 = 1;
 
-fn encode<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> io::Result<()>
+fn encode<R: ?Sized>(reader: &mut R) -> io::Result<()>
 where
     R: io::Read,
-    W: io::Write,
 {
+    // NOTE: for .lock()
+    let writer = &mut io::stdout();
     // TODO: use MaybeUninit
     let mut buf: [u8; DEFAULT_BUF_SIZE] = [0; DEFAULT_BUF_SIZE];
     loop {
@@ -21,9 +24,12 @@ where
             Err(ref e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
             Err(e) => return Err(e),
         };
-        writer.write_all(&[DATA_FLAG])?;
-        writer.write_all(&(len as u32).to_be_bytes())?;
-        writer.write_all(&buf[..len])?;
+        {
+            let mut writer_lock = writer.lock();
+            writer_lock.write_all(&[DATA_FLAG])?;
+            writer_lock.write_all(&(len as u32).to_be_bytes())?;
+            writer_lock.write_all(&buf[..len])?;
+        }
     }
 }
 
@@ -49,8 +55,13 @@ where
                     reader.read_exact(&mut len_buf)?;
                     rest = u32::from_be_bytes(len_buf) as usize;
                 }
-                // TODO: impl
-                _ => (),
+                HEARTBEAT_FLAG => {
+                    // discard one byte
+                    reader.read_exact(&mut one_buf)?;
+                    continue;
+                }
+                // TODO: return Err
+                _ => panic!("unexpected flag: {}", flag),
             }
         }
         let read_max = buf.len().min(rest);
@@ -79,6 +90,15 @@ fn main() {
     if opt.decode {
         decode(&mut io::stdin(), &mut io::stdout()).unwrap();
     } else {
-        encode(&mut io::stdin(), &mut io::stdout()).unwrap();
+        std::thread::spawn(|| loop {
+            // Send heartbeat
+            (&mut io::stdout())
+                .lock()
+                .write(&[HEARTBEAT_FLAG, rand::random::<u8>()])
+                .unwrap();
+            // TODO: hard code
+            std::thread::sleep(Duration::from_secs(1));
+        });
+        encode(&mut io::stdin()).unwrap();
     }
 }
