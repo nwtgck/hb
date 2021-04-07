@@ -13,8 +13,7 @@ fn encode<R: ?Sized>(reader: &mut R) -> io::Result<()>
 where
     R: io::Read,
 {
-    // NOTE: for .lock()
-    let writer = &mut io::stdout();
+    let stdout = &mut io::stdout();
     // TODO: use MaybeUninit
     let mut buf: [u8; DEFAULT_BUF_SIZE] = [0; DEFAULT_BUF_SIZE];
     loop {
@@ -25,10 +24,10 @@ where
             Err(e) => return Err(e),
         };
         {
-            let mut writer_lock = writer.lock();
-            writer_lock.write_all(&[DATA_FLAG])?;
-            writer_lock.write_all(&(len as u32).to_be_bytes())?;
-            writer_lock.write_all(&buf[..len])?;
+            let mut stdout_lock: io::StdoutLock = stdout.lock();
+            stdout_lock.write_all(&[DATA_FLAG])?;
+            stdout_lock.write_all(&(len as u32).to_be_bytes())?;
+            stdout_lock.write_all(&buf[..len])?;
         }
     }
 }
