@@ -9,6 +9,28 @@ Here is an example. The result is the same as `seq 1000000`.
 seq 1000000 | hb | hb -d
 ```
 
+## Spec
+
+Input data chunk is encoded as two types, DATA and HEARTBEAT. The format is as follows.
+
+DATA type has `Length`, which is the length in octets of the `Data`.
+
+```txt
++--------------------+-------------+---------------- - - - ---+
+|    DATA type (1)   |  Length (4) |  Data (Length)    ...    |
++--------------------+-------------+---------------- - - - ---+
+```
+
+HEARTBEAT type has a random octet, which is discarded.
+
+```txt
++--------------------+------------+
+| HEARTBEAT type (1) | Random (1) |
++--------------------+------------+
+```
+
+* `(N)`: N octets
+
 ## Help
 
 ```txt
