@@ -74,6 +74,15 @@ where
     }
 }
 
+// TODO: use better fast pseudo random
+fn random_u8() -> u8 {
+    (std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_micros()
+        % 256) as u8
+}
+
 const DECODE_NAME: &str = "decode";
 const INTERVAL_NAME: &str = "interval";
 
@@ -111,9 +120,7 @@ fn main() {
             // Send heartbeat
             let stdout = &mut io::stdout();
             let mut stdout_lock = stdout.lock();
-            stdout_lock
-                .write(&[HEARTBEAT_FLAG, rand::random::<u8>()])
-                .unwrap();
+            stdout_lock.write(&[HEARTBEAT_FLAG, random_u8()]).unwrap();
             stdout_lock.flush().unwrap();
         });
         encode(&mut io::stdin()).unwrap();
