@@ -15,25 +15,28 @@ Download from <https://github.com/nwtgck/hb/releases>
 
 ## Spec
 
-Input data chunk is encoded as two types, DATA and HEARTBEAT. The format is as follows.
+Input data chunk is encoded as two types, DATA and HEARTBEAT.
+
+* DATA: 0x0
+* HEARTBEAT: 0x1
 
 DATA type has `Length`, which is the length in octets of the `Data`.
 
 ```txt
-+--------------------+-------------+---------------- - - - ---+
-|    DATA type (1)   |  Length (4) |  Data (Length)    ...    |
-+--------------------+-------------+---------------- - - - ---+
++--------------------+--------------+-------------------- - - - ---+
+|    DATA type (8)   |  Length (32) |  Data (Length * 8)   ...     |
++--------------------+--------------+-------------------- - - - ---+
 ```
 
 HEARTBEAT type has a random octet, which is discarded.
 
 ```txt
 +--------------------+------------+
-| HEARTBEAT type (1) | Random (1) |
+| HEARTBEAT type (8) | Random (8) |
 +--------------------+------------+
 ```
 
-* `(N)`: N octets
+* `(N)`: N bits
 
 ## Help
 
