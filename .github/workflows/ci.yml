@@ -13,6 +13,11 @@ jobs:
           set -eux
           docker run --rm -v "$(pwd)":/home/rust/src ekidd/rust-musl-builder:1.50.0 sh -c 'sudo chown -R rust:rust . && cargo build --release'
           sudo chown -R $USER:$USER .
+      - name: Operational test
+        run: |
+          set -eux
+          sudo apt install -y pv
+          seq 100 | pv -qL 50 | ./target/x86_64-unknown-linux-musl/release/hb -n 1 | ./target/x86_64-unknown-linux-musl/release/hb -d
       - name: Archive
         run: |
           set -eux
