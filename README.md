@@ -41,7 +41,7 @@ HEARTBEAT type has a random octet, which is discarded.
 ## Help
 
 ```txt
-hb 0.1.0
+hb 0.2.0
 Heartbeat
 
 USAGE:
