@@ -11,6 +11,14 @@ seq 1000000 | hb | hb -d
 
 ## Install
 
+### Mac
+
+```bash
+brew install nwtgck/homebrew-hb/hb
+```
+
+### Other
+
 Download from <https://github.com/nwtgck/hb/releases>
 
 ## Spec
