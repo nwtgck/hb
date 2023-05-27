@@ -1,3 +1,4 @@
+use clap::Parser as _;
 use std::io;
 use std::io::Write;
 use std::time::Duration;
@@ -83,40 +84,33 @@ fn random_u8() -> u8 {
         % 256) as u8
 }
 
-const DECODE_NAME: &str = "decode";
-const INTERVAL_NAME: &str = "interval";
+/// Heartbeat CLI
+#[derive(clap::Parser, Debug)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Decode
+    #[arg(short = 'd', long = "decode", default_value_t = false)]
+    decodes: bool,
+
+    /// Seconds to send a heartbeat
+    #[arg(
+        short = 'n',
+        long = "interval",
+        value_name = "SECONDS",
+        default_value_t = 30
+    )]
+    interval_seconds: u64,
+}
 
 fn main() {
-    let matches = clap::App::new("hb")
-        .version(env!("CARGO_PKG_VERSION"))
-        .about("Heartbeat")
-        .arg(
-            clap::Arg::with_name(DECODE_NAME)
-                .short("d")
-                .long("decode")
-                .help("Decode")
-                .required(false),
-        )
-        .arg(
-            clap::Arg::with_name(INTERVAL_NAME)
-                // Same short flag name as watch command
-                .short("n")
-                .long("interval")
-                .value_name("seconds")
-                .help("Seconds to send a heartbeat")
-                .default_value("30")
-                .takes_value(true),
-        )
-        .get_matches();
+    // Parse arguments
+    let args = Args::parse();
 
-    let decodes = matches.is_present(DECODE_NAME);
-    let interval_seconds: u64 = matches.value_of(INTERVAL_NAME).unwrap().parse().unwrap();
-
-    if decodes {
+    if args.decodes {
         decode(&mut io::stdin(), &mut io::stdout()).unwrap();
     } else {
         std::thread::spawn(move || loop {
-            std::thread::sleep(Duration::from_secs(interval_seconds));
+            std::thread::sleep(Duration::from_secs(args.interval_seconds));
             // Send heartbeat
             let stdout = &mut io::stdout();
             let mut stdout_lock = stdout.lock();

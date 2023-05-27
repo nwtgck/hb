@@ -11,6 +11,14 @@ seq 1000000 | hb | hb -d
 
 ## Install
 
+### Mac
+
+```bash
+brew install nwtgck/homebrew-hb/hb
+```
+
+### Other
+
 Download from <https://github.com/nwtgck/hb/releases>
 
 ## Spec
@@ -41,17 +49,13 @@ HEARTBEAT type has a random octet, which is discarded.
 ## Help
 
 ```txt
-hb 0.1.0
-Heartbeat
+Heartbeat CLI
 
-USAGE:
-    hb [FLAGS] [OPTIONS]
+Usage: hb [OPTIONS]
 
-FLAGS:
-    -d, --decode     Decode
-    -h, --help       Prints help information
-    -V, --version    Prints version information
-
-OPTIONS:
-    -n, --interval <seconds>    Seconds to send a heartbeat [default: 30]
+Options:
+  -d, --decode              Decode
+  -n, --interval <SECONDS>  Seconds to send a heartbeat [default: 30]
+  -h, --help                Print help
+  -V, --version             Print version
 ```
