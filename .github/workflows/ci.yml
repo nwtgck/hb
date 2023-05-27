@@ -2,83 +2,141 @@ name: CI
 
 on: [push]
 
+env:
+  CROSS_VERSION: 0.2.5
+  RUST_VERSION: 1.67.0
+  GHR_VERSION: 0.16.0
+
 jobs:
-  build_for_linux:
+  cargo_fmt:
     runs-on: ubuntu-20.04
     steps:
       - uses: actions/checkout@v3
+      - run: cargo fmt --all -- --check
+
+  cargo_test:
+    strategy:
+      matrix:
+        runs-on:
+          - ubuntu-20.04
+          - macos-12
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - uses: actions/checkout@v3
       - run: cargo test -- --color=always --nocapture
-      - name: Release build
+
+  cross_build:
+    strategy:
+      max-parallel: 8
+      matrix:
+        target:
+          - aarch64-unknown-linux-musl
+          - arm-linux-androideabi
+          - arm-unknown-linux-musleabi
+          - arm-unknown-linux-musleabihf
+          - armv5te-unknown-linux-musleabi
+          - armv7-linux-androideabi
+          - armv7-unknown-linux-musleabihf
+          - armv7-unknown-linux-musleabi
+          - i586-unknown-linux-musl
+          - i686-linux-android
+          - i686-unknown-linux-musl
+          - x86_64-linux-android
+          - x86_64-pc-windows-gnu
+          - x86_64-unknown-linux-musl
+    runs-on: ubuntu-20.04
+    steps:
+      - run: rustup default ${RUST_VERSION}
+      - uses: actions/checkout@v3
+      - name: Install cross
+        run: cd /tmp && curl -L https://github.com/cross-rs/cross/releases/download/v${CROSS_VERSION}/cross-x86_64-unknown-linux-musl.tar.gz | tar xzf -
+      - run: /tmp/cross build --target=${{ matrix.target }} --release --locked
+      - name: Archive binary
         run: |
-          set -eux
-          docker run --rm -v "$(pwd)":/home/rust/src ekidd/rust-musl-builder:1.50.0 sh -c 'sudo chown -R rust:rust . && cargo build --release'
-          sudo chown -R $USER:$USER .
-      - name: Operational test
-        run: |
-          set -eux
-          sudo apt install -y pv
-          seq 100 | pv -qL 50 | ./target/x86_64-unknown-linux-musl/release/hb -n 1 | ./target/x86_64-unknown-linux-musl/release/hb -d
-      - name: Archive
-        run: |
-          set -eux
-          mkdir hb-x86-64-linux
-          cp target/x86_64-unknown-linux-musl/release/hb hb-x86-64-linux
-          zip -r hb-x86-64-linux.zip hb-x86-64-linux
-          tar czf hb-x86-64-linux.tar.gz hb-x86-64-linux
-      - name: Upload Linux executables as artifacts
-        uses: actions/upload-artifact@v3
+          set -eu
+          mkdir ./hb-${{ matrix.target }}
+          if [[ "${{ matrix.target }}" == *"-windows-"* ]]; then
+            cp ./target/${{ matrix.target }}/release/hb.exe ./hb-${{ matrix.target }}
+            zip -r ./hb-${{ matrix.target }}.zip ./hb-${{ matrix.target }}
+          else
+            cp ./target/${{ matrix.target }}/release/hb ./hb-${{ matrix.target }}
+            tar zcf ./hb-${{ matrix.target }}.tar.gz ./hb-${{ matrix.target }}
+          fi
+      - uses: actions/upload-artifact@v3
         with:
-          name: ${{ github.sha }}-linux-artifacts
-          path: hb-x86-64-linux.*
+          name: cross_build_artifact
+          path: |
+            hb-*.tar.gz
+            hb-*.zip
 
   build_for_mac:
+    strategy:
+      matrix:
+        target:
+          - x86_64-apple-darwin
+          - aarch64-apple-darwin
     runs-on: macos-12
     steps:
+      - run: rustup default ${RUST_VERSION}
       - uses: actions/checkout@v3
-      - run: cargo test -- --color=always --nocapture
-      - run: cargo build --release
-      - name: Archive
+      - run: rustup target add ${{ matrix.target }}
+      - run: cargo build --target=${{ matrix.target }} --release --locked
+      - name: Archive binary
         run: |
-          set -eux
-          mkdir hb-x86-64-apple-darwin
-          cp target/release/hb hb-x86-64-apple-darwin
-          zip -r hb-x86-64-apple-darwin.zip hb-x86-64-apple-darwin
-          tar czf hb-x86-64-apple-darwin.tar.gz hb-x86-64-apple-darwin
-      - name: Upload macOS executables as artifacts
-        uses: actions/upload-artifact@v3
+          set -eu
+          mkdir ./hb-${{ matrix.target }}
+          cp ./target/${{ matrix.target }}/release/hb ./hb-${{ matrix.target }}
+          tar zcf ./hb-${{ matrix.target }}.tar.gz ./hb-${{ matrix.target }}
+      - uses: actions/upload-artifact@v3
         with:
-          name: ${{ github.sha }}-mac-artifacts
-          path: hb-x86-64-apple-darwin.*
+          name: mac_build_artifact
+          path: |
+            hb-*.tar.gz
 
-  release_if_tag_exits:
-    needs: [build_for_linux, build_for_mac]
+  linux_operational_test:
+    needs:
+      - cross_build
     runs-on: ubuntu-20.04
     steps:
-      - name: Extract tag name
-        shell: bash
-        run: echo "##[set-output name=tag;]$(echo ${GITHUB_REF#refs/tags/})"
-        id: extract_tag
-      # NOTE: checkout is needed to use hub command
-      - uses: actions/checkout@v3
-      - name: Download the artifact (Linux)
+      - name: Download the artifact (cross build)
         uses: actions/download-artifact@v3
         with:
-          name: ${{ github.sha }}-linux-artifacts
+          name: cross_build_artifact
+      - name: Extract binary
+        run: tar xf hb-x86_64-unknown-linux-musl.tar.gz
+      - run: sudo apt install -y pv
+      - name: Operational test
+        run: |
+          set -xeu
+          diff <(seq 100) <(seq 100 | pv -qL 50 | ./hb-x86_64-unknown-linux-musl/hb -n 1 | ./hb-x86_64-unknown-linux-musl/hb -d)
+
+  release_if_tag_exits:
+    needs:
+      - cargo_fmt
+      - cargo_test
+      - build_for_mac
+      - linux_operational_test
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Download the artifact (cross build)
+        uses: actions/download-artifact@v3
+        with:
+          name: cross_build_artifact
+          path: ./publish_dir
       - name: Download the artifact (macOS)
         uses: actions/download-artifact@v3
         with:
-          name: ${{ github.sha }}-mac-artifacts
-      - run: ls -la
-      # (base: https://github.com/actions/upload-release-asset/issues/28#issuecomment-617208601)
+          name: mac_build_artifact
+          path: ./publish_dir
+      - run: ls -la ./publish_dir
       - name: Release
         if: contains(github.ref, 'refs/tags/')
         run: |
           set -eux
-          hub release create \
-            -a hb-x86-64-linux.tar.gz \
-            -a hb-x86-64-linux.zip \
-            -a hb-x86-64-apple-darwin.tar.gz \
-            -a hb-x86-64-apple-darwin.zip \
-            -m "Release ${{ steps.extract_tag.outputs.tag }}" ${{ steps.extract_tag.outputs.tag }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Show and create checksums
+          (cd publish_dir && sha256sum * | tee /dev/stderr > sha256sums.txt)
+          TAG=$(echo $GITHUB_REF | cut -d / -f 3)
+          VERSION=$TAG
+          REPO=$(echo $GITHUB_REPOSITORY | cut -d / -f 2)
+          curl -L https://github.com/tcnksm/ghr/releases/download/v${GHR_VERSION}/ghr_v${GHR_VERSION}_linux_amd64.tar.gz | tar xzf -
+          ./ghr_v${GHR_VERSION}_linux_amd64/ghr -t ${{ secrets.GITHUB_TOKEN }} -u ${GITHUB_ACTOR} -r ${REPO} -c ${GITHUB_SHA} -delete ${VERSION} ./publish_dir
