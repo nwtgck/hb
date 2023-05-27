@@ -61,11 +61,11 @@ jobs:
       # NOTE: checkout is needed to use hub command
       - uses: actions/checkout@v3
       - name: Download the artifact (Linux)
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: ${{ github.sha }}-linux-artifacts
       - name: Download the artifact (macOS)
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
           name: ${{ github.sha }}-mac-artifacts
       - run: ls -la
