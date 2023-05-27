@@ -6,7 +6,7 @@ jobs:
   build_for_linux:
     runs-on: ubuntu-20.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - run: cargo test -- --color=always --nocapture
       - name: Release build
         run: |
@@ -34,7 +34,7 @@ jobs:
   build_for_mac:
     runs-on: macos-12
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - run: cargo test -- --color=always --nocapture
       - run: cargo build --release
       - name: Archive
@@ -59,7 +59,7 @@ jobs:
         run: echo "##[set-output name=tag;]$(echo ${GITHUB_REF#refs/tags/})"
         id: extract_tag
       # NOTE: checkout is needed to use hub command
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Download the artifact (Linux)
         uses: actions/download-artifact@v2
         with:
