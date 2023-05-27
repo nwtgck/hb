@@ -26,7 +26,7 @@ jobs:
           zip -r hb-x86-64-linux.zip hb-x86-64-linux
           tar czf hb-x86-64-linux.tar.gz hb-x86-64-linux
       - name: Upload Linux executables as artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ${{ github.sha }}-linux-artifacts
           path: hb-x86-64-linux.*
@@ -45,7 +45,7 @@ jobs:
           zip -r hb-x86-64-apple-darwin.zip hb-x86-64-apple-darwin
           tar czf hb-x86-64-apple-darwin.tar.gz hb-x86-64-apple-darwin
       - name: Upload macOS executables as artifacts
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
           name: ${{ github.sha }}-mac-artifacts
           path: hb-x86-64-apple-darwin.*
